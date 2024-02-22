@@ -1,0 +1,63 @@
+services:
+  mariadb:
+    image: mariadb:${MARIADB_VERSION}
+    container_name: ${DOCKER_PROJECT_NAME}_db
+    env_file: .env
+    networks:
+      - network
+    volumes:
+      - db_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_root_password
+      - db_password
+    restart: always
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:${PHPMYADMIN_VERSION}
+    container_name: ${DOCKER_PROJECT_NAME}_phpmyadmin
+    env_file: .env
+    networks:
+      - network
+    ports:
+      - ${PHPMYADMIN_PORT}:80
+    environment:
+      PMA_HOST: mariadb
+    restart: always
+    depends_on:
+      - mariadb
+  wordpress:
+    image: wordpress:${WORDPRESS_VERSION}
+    container_name: ${DOCKER_PROJECT_NAME}_server
+    env_file: .env
+    volumes:
+      - web_data:/var/www/html
+    networks:
+      - network
+    ports:
+      - ${WORDPRESS_PORT}:80
+    environment:
+      WORDPRESS_DB_HOST: mariadb
+      WORDPRESS_DB_USER: ${DB_USER}
+      WORDPRESS_DB_NAME: ${DB_NAME}
+      WORDPRESS_DB_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+    depends_on:
+      - mariadb
+    restart: always
+volumes:
+  db_data:
+  web_data:
+networks:
+  network:
+    driver: bridge
+    name: ${DOCKER_PROJECT_NAME}_network
+secrets:
+  db_password:
+    file: secrets/db_password.txt
+  db_root_password:
+    file: secrets/db_root_password.txt
